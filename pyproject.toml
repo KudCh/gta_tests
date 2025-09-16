@@ -1,0 +1,11 @@
+[project]
+name = "lmstudio-open-ai-compatibility-api"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "agentlego>=0.2.0",
+    "mcp>=1.14.0",
+    "openai>=1.107.2",
+]
