@@ -4,15 +4,29 @@ from openai import OpenAI
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 from dotenv import load_dotenv
+import sys
 
 load_dotenv()  # Load environment variables from .env file
 
-async def run_chat(model_name: str):
+async def run_chat(model_name: str, server_url: str = "http://localhost:8000"):
 
     # Connect to the official OpenAI API
     client = OpenAI()  
 
-    history = []
+    history = [
+        {
+            "role": "system",
+            "content": (
+                "You are an assistant that always reasons in the ReAct style.\n"
+                "For every user query:\n"
+                "- Start with Thought: (your reasoning)\n"
+                "- If a tool is needed, output Action: (tool name and arguments)\n"
+                "- When tool results are available, output Observation: (tool output)\n"
+                "- Finally, provide the final answer.\n"
+                "Do not skip Thought/Action/Observation, even if no tool is required."
+            ),
+        }
+    ]
 
     while True:
         user_input = input("You: ")
@@ -31,48 +45,34 @@ async def run_chat(model_name: str):
                     "type": "mcp",
                     "server_label": "weather",
                     "server_description": "Weather MCP server with forecast and alerts",
-                    "server_url": "https://923dbd45fa7f.ngrok-free.app/sse",
+                    "server_url": server_url + "/sse",
                     "require_approval": "never",
                 },
             ],
         )
 
-        # The model may return multiple items (messages, tool calls, etc.)
         for output in response.output:
-            print(output) 
             if output.type == "message":
-                msg = output
-                if msg.role == "assistant":
-                    # Check if assistant requested a tool
-                    if hasattr(msg, "tool_calls"):
-                        for call in msg.tool_calls:
-                            tool_name = call.function.name
-                            tool_args = json.loads(call.function.arguments)
+                role = output.role
+                parts = []
+                for c in output.content:
+                    if c.type == "output_text":
+                        parts.append(c.text)
+                content = "".join(parts)
 
-                            result = await session.call_tool(tool_name, tool_args)
+                if role == "assistant":
+                    print(f"Bot:\n{content}")  # full ReAct trace
+                    history.append({"role": "assistant", "content": content})
 
-                            # Add tool result to history
-                            history.append({
-                                "role": "tool",
-                                "name": tool_name,
-                                "content": str(result),
-                            })
-
-                            # Ask again with tool result
-                            followup = client.responses.create(
-                                model=model_name,
-                                input=history,
-                            )
-                            answer = followup.output[0].content[0].text
-                            history.append({"role": "assistant", "content": answer})
-                            print("Bot:", answer)
-
-                    else:
-                        # Plain assistant reply
-                        answer = msg.content[0].text
-                        history.append({"role": "assistant", "content": answer})
-                        print("Bot:", answer)
+                elif role == "tool":
+                    print(f"Observation: {content}")
+                    history.append({"role": "tool", "content": content})
 
 
 if __name__ == "__main__":
-    asyncio.run(run_chat("gpt-4.1-mini"))
+    if len(sys.argv) < 1:
+        print("Usage: python openai_mcp_agent.py [server_url]")
+        print("Example: python openai_mcp_agent.py https://cfe484f994aa.ngrok-free.app")
+        sys.exit(1)
+    
+    asyncio.run(run_chat("gpt-4.1-mini", sys.argv[1]))
