@@ -4,6 +4,10 @@
 
 **weather-server.py** : a weather alerts server built following a tutorial at the Model Context Protocol [website](https://modelcontextprotocol.io/docs/develop/build-server) 
 
+**gta_server.py**: MCP server with GTA tools (OCR, ImageDescription, CountGivenObject)
+
+**gta_client.py**: ReAct style chatbot with an MCP client that connects to the GTA MCP server 
+
 Execution:
 
 1. Run weather_server with "uv run weather_server.py"
