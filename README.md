@@ -3,3 +3,9 @@
 **openai_client.py** : a ReAct agent built with the original OpenAI API (uses gpt-4.1-mini model from OpenAI). The client uses Responses API to communicate with the model. The client requires an OpenAI API that can be generated at the [OpenAI platfrom](https://openai.com/api/)
 
 **weather-server.py** : a weather alerts server built following a tutorial at the Model Context Protocol [website](https://modelcontextprotocol.io/docs/develop/build-server) 
+
+Execution:
+
+1. Run weather_server with "uv run weather_server.py"
+2. Redirect the server to an external address with ngrok "ngrok http 8000"
+3. Run the MCP client with the URL generated from ngrok "uv run openai_mcp_client.py <ngrok_url>" 
