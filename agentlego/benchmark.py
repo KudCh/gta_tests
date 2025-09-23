@@ -42,7 +42,7 @@ class ImageDescription(BaseTool):
     @require('mmpretrain')
     def __init__(self,
                  model: str = 'llava-7b-v1.5_vqa',
-                 device: str = 'cuda',
+                 device: str = 'cpu',
                  toolmeta=None):
         super().__init__(toolmeta=toolmeta)
         self.model = model
@@ -69,7 +69,7 @@ class CountGivenObject(BaseTool):
     @require('mmpretrain')
     def __init__(self,
                  model: str = 'llava-7b-v1.5_vqa',
-                 device: str = 'cuda',
+                 device: str = 'cpu',
                  toolmeta=None):
         super().__init__(toolmeta=toolmeta)
         self.model = model
@@ -115,7 +115,7 @@ class RegionAttributeDescription(BaseTool):
     @require('mmpretrain')
     def __init__(self,
                  model: str = 'llava-7b-v1.5_vqa',
-                 device: str = 'cuda',
+                 device: str = 'cpu',
                  toolmeta=None):
         super().__init__(toolmeta=toolmeta)
         self.model = model
