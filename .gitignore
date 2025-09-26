@@ -11,3 +11,5 @@ wheels/
 .env
 gta_client_react_version1.py
 blip_test.py
+generated/image
+~
