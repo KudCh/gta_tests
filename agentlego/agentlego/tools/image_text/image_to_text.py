@@ -21,7 +21,7 @@ class ImageDescription(BaseTool):
     @require('mmpretrain')
     def __init__(self,
                  model: str = 'blip-base_3rdparty_caption',
-                 device: str = 'cuda',
+                 device: str = 'cpu',
                  toolmeta=None):
         super().__init__(toolmeta=toolmeta)
         self.model = model

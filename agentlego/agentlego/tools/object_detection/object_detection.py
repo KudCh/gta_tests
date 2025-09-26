@@ -20,7 +20,7 @@ class ObjectDetection(BaseTool):
     @require('mmdet>=3.1.0')
     def __init__(self,
                  model: str = 'rtmdet_l_8xb32-300e_coco',
-                 device: str = 'cuda',
+                 device: str = 'cpu',
                  toolmeta=None):
         super().__init__(toolmeta=toolmeta)
         self.model = model

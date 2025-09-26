@@ -20,7 +20,7 @@ class CountGivenObject(BaseTool):
     @require('mmdet>=3.1.0')
     def __init__(self,
                  model: str = 'glip_atss_swin-l_fpn_dyhead_pretrain_mixeddata',
-                 device: str = 'cuda',
+                 device: str = 'cpu',
                  toolmeta=None):
         super().__init__(toolmeta=toolmeta)
         self.model = model
