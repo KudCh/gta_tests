@@ -9,3 +9,5 @@ wheels/
 # Virtual environments
 .venv
 .env
+gta_client_react_version1.py
+blip_test.py
