@@ -9,10 +9,24 @@ import base64
 
 load_dotenv()  
 
+# -----------------------------
+# Helpers
+
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
     
+def create_file(file_path, client):
+  with open(file_path, "rb") as file_content:
+    result = client.files.create(
+        file=file_content,
+        purpose="vision",
+    )
+    return result.id
+
+# -----------------------------
+# Main function to run the chat
+
 async def run_chat(model_name: str, server_url: str, test_index: str = "0"):
 
     # Connect to the official OpenAI API
@@ -23,18 +37,10 @@ async def run_chat(model_name: str, server_url: str, test_index: str = "0"):
             "role": "system",
             "content": (
                 "You are an assistant that always reasons in the ReAct style.\n"
-                # "For every user query:\n"
-                # "- Start with Thought: (your reasoning)\n"
-                # "- If a tool is needed, output Action: (tool name and arguments)\n"
-                # "- When tool results are available, output Observation: (tool output)\n"
-                # "- Finally, provide the final answer.\n"
-                # "Do not skip Thought/Action/Observation, even if no tool is required."
-                """Instructions:
-                1. Analyze the query, previous reasoning steps, and observations.
-                2. Decide on the next action: use a tool or provide a final answer.
-                3. Respond in the following JSON format:
+                "You have a list of tools available to you to help in answering user queries.\n"
 
-                If you need to use a tool:
+                """For every user tool that you use, please rpovide the following details:
+
                 {{
                     "thought": "Your detailed reasoning about what to do next",
                     "action": {{
@@ -42,9 +48,10 @@ async def run_chat(model_name: str, server_url: str, test_index: str = "0"):
                         "reason": "Explanation of why you chose this tool",
                         "input": "Specific input for the tool, if different from the original query"
                     }}
+                    "Observation": "Result from the tool, or explnation of the error if the tool failed"
                 }}
 
-                If you have enough information to answer the query:
+                Once you have enough information to answer the query:
                 {{
                     "thought": "Your final reasoning process",
                     "answer": "Your comprehensive answer to the query"
@@ -65,11 +72,9 @@ async def run_chat(model_name: str, server_url: str, test_index: str = "0"):
         
         # load test images 
         for image in data[test_index]["files"]:
-            if image["url"]: 
-                content.append({ "type": "input_image", "image_url": image["url"]})
-            else: 
-                base64_image = encode_image("gta_dataset" + image["path"])
-                content.append({ "type": "input_image", "image_url": f"data:image/jpeg;base64,{base64_image}"})
+            #file_id = create_file("./gta_dataset/" + image["path"], client)
+            #content.append({ "type": "input_image", "file_id": file_id})
+            content.append({"type": "input_text", "text": "Image path: " + "./gta_dataset/" + image["path"]})
 
     # Add user input to history
     history.append({"role": "user", "content": json.dumps(content)})
@@ -108,9 +113,9 @@ async def run_chat(model_name: str, server_url: str, test_index: str = "0"):
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 1:
-        print("Usage: python openai_mcp_agent.py [server_url]")
-        print("Example: python openai_mcp_agent.py https://cfe484f994aa.ngrok-free.app")
+    if len(sys.argv) < 2:
+        print("Usage: python openai_mcp_agent.py [server_url] optional:[text index]")
+        print("Example: python openai_mcp_agent.py https://cfe484f994aa.ngrok-free.app 1")
         sys.exit(1)
     
-    asyncio.run(run_chat("gpt-4.1-mini", sys.argv[1]))
+    asyncio.run(run_chat("gpt-4.1-mini", sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else "0"))
