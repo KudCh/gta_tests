@@ -4,9 +4,9 @@ from agentlego.utils import load_or_build_object, require
 from agentlego.tools import BaseTool
 from agentlego.types import ImageIO, Annotated, Info
 
-# from transformers import AutoProcessor, AutoModelForCausalLM
-# import torch
-# import re
+from transformers import AutoProcessor, AutoModelForCausalLM
+import torch
+import re
 
 # -----------------------------
 # Monkey patch for transformers.AutoModel.from_pretrained
@@ -199,3 +199,88 @@ class RegionAttributeDescription(BaseTool):
         x1, y1, x2, y2 = (int(item) for item in parse_multi_float(bbox))
         cropped_image = image.to_array()[y1:y2, x1:x2, ::-1]
         return self._inferencer(cropped_image, f'Describe {attribute} on the image in detail')[0]['pred_answer']
+
+from transformers import LlavaProcessor
+
+class RegionAttributeDescriptionReimplemented(BaseTool):
+    default_desc = "Describe the attribute of a region of the input image."
+
+    def __init__(self, model_id="llava-hf/llava-1.5-7b-hf", device="cpu", toolmeta=None):
+        self.model_id = model_id
+        self.device = "cuda" if torch.cuda.is_available() else device
+        self.processor = None
+        self.model = None
+
+    def setup(self):
+        from transformers import AutoProcessor, LlavaProcessor
+
+        try:
+            # Try with LlavaProcessor explicitly (newer transformers)
+            self.processor = LlavaProcessor.from_pretrained(
+                self.model_id, use_fast=False
+            )
+        except TypeError as e:
+            if "unexpected keyword argument 'image_token'" in str(e):
+                # Fallback: load raw config, strip image_token, reload
+                import json, os
+                from transformers.utils import cached_file
+
+                config_path = cached_file(self.model_id, "processor_config.json")
+                with open(config_path, "r", encoding="utf-8") as f:
+                    config = json.load(f)
+
+                # remove problematic key
+                if "image_token" in config:
+                    del config["image_token"]
+
+                # Rebuild processor safely
+                self.processor = AutoProcessor.from_pretrained(
+                    self.model_id, use_fast=False, **config
+                )
+            else:
+                raise e
+
+        from transformers import LlavaForConditionalGeneration
+        # Load model with eager attention fix
+        self.model = LlavaForConditionalGeneration.from_pretrained(
+            self.model_id,
+            torch_dtype=torch.float16 if self.device == "cuda" else torch.float32,
+            device_map="auto",
+            attn_implementation="eager",  # 👈 prevents SDPA error
+        )
+
+    def apply(self, image, bbox: str, attribute: str, resize_max: int = 512):
+        from PIL import Image
+
+        from agentlego.utils import parse_multi_float
+        x1, y1, x2, y2 = (int(v) for v in parse_multi_float(bbox))
+        cropped_image = image.to_array()[y1:y2, x1:x2, ::-1]
+
+        pil_image = Image.fromarray(cropped_image)
+
+        # Resize the image for faster processing
+        w, h = pil_image.size
+        max_dim = max(w, h)
+        if max_dim > resize_max:
+            scale = resize_max / max_dim
+            pil_image = pil_image.resize((int(w * scale), int(h * scale)))
+
+        question = f"Describe {attribute} of the highlighted region in detail."
+        prompt = f"USER: <image>\n{question}\nASSISTANT:"
+
+        # Preprocess inputs
+        inputs = self.processor(images=cropped_image, text=prompt, return_tensors="pt").to(self.device)
+
+        # Generate response
+        self.model.eval()
+        with torch.inference_mode():
+            output = self.model.generate(**inputs, max_new_tokens=100, do_sample=False)
+
+        print("Output IDs:", output[0])
+        print("Input length:", inputs["input_ids"].shape[1])
+
+        generated_ids = output[0][inputs["input_ids"].shape[1]:]
+    
+        response = self.processor.decode(generated_ids, skip_special_tokens=True)
+
+        return response

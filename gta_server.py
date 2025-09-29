@@ -29,7 +29,7 @@ from dotenv import load_dotenv
 import sys, os
 sys.path.append(os.path.abspath("./agentlego"))
 
-from benchmark import RegionAttributeDescription #, CountGivenObject, ImageDescription
+from benchmark import RegionAttributeDescriptionReimplemented #, CountGivenObject, ImageDescription
 from agentlego.tools import OCR, ObjectDetection, ImageDescription, CountGivenObject, DrawBox, AddText, GoogleSearch, Calculator, Plot, MathOCR, Solver, TextToImage, ImageStylization
 from agentlego.utils import load_or_build_object, require
 from agentlego.tools import BaseTool
@@ -74,37 +74,37 @@ async def ocr_tool(
     result = ocr_impl(image)
     return [TextContent(type="text", text=str(result))]
 
-# # -----------------------------
-# # Tool 2: RegionAttributeDescription
-# # -----------------------------
-# region_attribute_description_impl = RegionAttributeDescription()
+# -----------------------------
+# Tool 2: RegionAttributeDescription
+# -----------------------------
+region_attribute_description_impl = RegionAttributeDescriptionReimplemented()
 
-# """
-# RegionAttributeDescription tool implementation
+"""
+RegionAttributeDescription tool implementation
 
-#     def apply(
-#         self,
-#         image: ImageIO,
-#         bbox: Annotated[str,
-#                         Info('The bbox coordinate in the format of `(x1, y1, x2, y2)`')],
-#         attribute: Annotated[str, Info('The attribute to describe')],
-#     ) -> str:
-# """
+    def apply(
+        self,
+        image: ImageIO,
+        bbox: Annotated[str,
+                        Info('The bbox coordinate in the format of `(x1, y1, x2, y2)`')],
+        attribute: Annotated[str, Info('The attribute to describe')],
+    ) -> str:
+"""
 
-# @mcp_server.tool(
-#     name="RegionAttributeDescription",
-#     description="Describe the attribute of a region of the input image."
-# )
-# async def region_attribute_description_tool(
-#         image_path: Annotated[str, Info('The path to the input image.')],
-#         bbox: Annotated[str,
-#                         Info('The bbox coordinate in the format of `(x1, y1, x2, y2)`')],
-#         attribute: Annotated[str, Info('The attribute to describe')],
-#     ) -> list[TextContent]:
+@mcp_server.tool(
+    name="RegionAttributeDescription",
+    description="Describe the attribute of a region of the input image."
+)
+async def region_attribute_description_tool(
+        image_path: Annotated[str, Info('The path to the input image.')],
+        bbox: Annotated[str,
+                        Info('The bbox coordinate in the format of `(x1, y1, x2, y2)`')],
+        attribute: Annotated[str, Info('The attribute to describe')],
+    ) -> list[TextContent]:
 
-#     image = ImageIO(image_path)
-#     result = region_attribute_description_impl(image, bbox, attribute)
-#     return [TextContent(type="text", text=str(result))]
+    image = ImageIO(image_path)
+    result = region_attribute_description_impl(image, bbox, attribute)
+    return [TextContent(type="text", text=str(result))]
 
 # -----------------------------
 # Tool 3: DetectGivenObject
