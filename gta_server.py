@@ -1,23 +1,3 @@
-# -----------------------------
-# Monkey patch for transformers.AutoModel.from_pretrained
-import transformers
-
-old_from_pretrained = transformers.AutoModel.from_pretrained
-
-def patched_from_pretrained(*args, **kwargs):
-    kwargs.setdefault("attn_implementation", "eager")
-    return old_from_pretrained(*args, **kwargs)
-
-transformers.AutoModel.from_pretrained = patched_from_pretrained
-
-old_causal_from_pretrained = transformers.AutoModelForCausalLM.from_pretrained
-def patched_causal_from_pretrained(*args, **kwargs):
-    kwargs.setdefault("attn_implementation", "eager")
-    return old_causal_from_pretrained(*args, **kwargs)
-
-transformers.AutoModelForCausalLM.from_pretrained = patched_causal_from_pretrained
-# -----------------------------
-
 from mcp.types import TextContent
 from PIL import Image
 import base64, io
@@ -25,7 +5,6 @@ from fastmcp import FastMCP
 from typing import List, Optional
 from dotenv import load_dotenv
 
-# Import tools from AgentLego
 import sys, os
 sys.path.append(os.path.abspath("./agentlego"))
 
@@ -35,6 +14,8 @@ from agentlego.utils import load_or_build_object, require
 from agentlego.tools import BaseTool
 from agentlego.types import ImageIO, Annotated, Info
 
+import nltk
+nltk.data.path.append("./~/nltk_data")
 
 mcp_server = FastMCP("gta-tools")
 load_dotenv()
@@ -51,20 +32,9 @@ def decode_image(img_b64: str) -> Image.Image:
 # -----------------------------
 ocr_impl = OCR()
 
-"""
-OCR tool implementation
-
-def apply(
-        self,
-        image: ImageIO,
-    ) -> Annotated[str,
-                   Info('OCR results, include bbox in x1, y1, x2, y2 format '
-                        'and the recognized text.')]:
-"""
-
 @mcp_server.tool(
     name="OCR",
-    description="This tool can recognize all text on the input image."
+    description=ocr_impl.default_desc
 )
 async def ocr_tool(
     image_path: Annotated[str, Info('The path to the input image.')]
@@ -79,21 +49,9 @@ async def ocr_tool(
 # -----------------------------
 region_attribute_description_impl = RegionAttributeDescriptionReimplemented()
 
-"""
-RegionAttributeDescription tool implementation
-
-    def apply(
-        self,
-        image: ImageIO,
-        bbox: Annotated[str,
-                        Info('The bbox coordinate in the format of `(x1, y1, x2, y2)`')],
-        attribute: Annotated[str, Info('The attribute to describe')],
-    ) -> str:
-"""
-
 @mcp_server.tool(
     name="RegionAttributeDescription",
-    description="Describe the attribute of a region of the input image."
+    description=region_attribute_description_impl.default_desc
 )
 async def region_attribute_description_tool(
         image_path: Annotated[str, Info('The path to the input image.')],
@@ -110,19 +68,10 @@ async def region_attribute_description_tool(
 # Tool 3: DetectGivenObject
 # -----------------------------
 detection_impl = ObjectDetection()
-"""
-    def apply(
-        self,
-        image: ImageIO,
-    ) -> Annotated[str,
-                   Info('All detected objects, include object name, '
-                        'bbox in (x1, y1, x2, y2) format, '
-                        'and detection score.')]:
-"""
 
 @mcp_server.tool(
     name="DetectGivenObject",
-    description="This tool can detect all instances of a given object on the input image. The tool can only detect objects defined in COCO 80 classes"
+    description=detection_impl.default_desc
 )
 async def detect_given_object_tool(   
     image_path: Annotated[str, Info('The path to the input image.')],
@@ -148,13 +97,9 @@ async def detect_given_object_tool(
 # -----------------------------
 image_description_impl = ImageDescription()
 
-"""
-    def apply(self, image: ImageIO) -> str:
-"""
-
 @mcp_server.tool(
     name="ImageDescription",
-    description="A useful tool that returns a brief description of the input image."
+    description=image_description_impl.default_desc
 )
 
 async def image_description_tool(
@@ -171,19 +116,9 @@ async def image_description_tool(
 # -----------------------------
 drawbox_impl = DrawBox()
 
-"""
-    def apply(
-        self,
-        image: ImageIO,
-        bbox: Annotated[str,
-                        Info('The bbox coordinate in the format of `(x1, y1, x2, y2)`')],
-        annotation: Annotated[Optional[str],
-                              Info('The extra annotation text of the bbox')] = None,
-    ) -> ImageIO:
-"""
 @mcp_server.tool(
     name="DrawBox",
-    description="A tool to draw a box on a certain region of the input image."
+    description=drawbox_impl.default_desc
 )
 async def drawbox_tool(
         image_path: Annotated[str, Info('The path to the input image.')],
@@ -200,23 +135,9 @@ async def drawbox_tool(
 # -----------------------------
 addtext_impl = AddText()
 
-"""
-    def apply(
-        self,
-        image: ImageIO,
-        text: str,
-        position: Annotated[
-            str,
-            Info('The left-bottom corner coordinate in the format of `(x, y)`, '
-                 'or a combination of ["l"(left), "m"(middle), "r"(right)] '
-                 'and ["t"(top), "m"(middle), "b"(bottom)] like "mt" for middle-top')],
-        color: str = 'red',
-    ) -> ImageIO:
-
-"""
 @mcp_server.tool(
     name="AddText",
-    description="A tool to add text to the input image."
+    description=addtext_impl.default_desc
 )
 async def addtext_tool(
         image_path: Annotated[str, Info('The path to the input image.')],
@@ -237,13 +158,9 @@ async def addtext_tool(
 # -----------------------------
 search_impl = GoogleSearch()
 
-"""
-    def apply(self, query: str) -> str:
-
-"""
 @mcp_server.tool(
     name="GoogleSearch",
-    description='The tool can search the input query text from Google and return the related results.'
+    description=search_impl.default_desc
 )
 async def search_tool(
         query: Annotated[str, Info('The search query text.')]
@@ -257,15 +174,11 @@ async def search_tool(
 # -----------------------------
 calculator_impl = Calculator()
 
-"""
-def apply(self, expression: str) -> str:
-"""
 @mcp_server.tool(
     name="Calculator",
-    description='A calculator tool. The input must be a single Python '
-                    'expression and you cannot import packages. You can use functions '
-                    'in the `math` package without import.'
+    description=calculator_impl.default_desc
 )
+
 async def calculator_tool(
         expression: Annotated[str, Info('The mathematical expression to calculate.')]
         ) -> list[TextContent]:
@@ -278,31 +191,9 @@ async def calculator_tool(
 # -----------------------------
 plot_impl = Plot()
 
-"""
-    def apply(self, command: Annotated[str,
-                                       Info('Markdown format Python code')]) -> ImageIO:
-"""
 @mcp_server.tool(
     name="Plot",
-    description='''\
-This tool can execute Python code to plot diagrams. The code should include a function named 'solution'. The function should return the matplotlib figure directly. Avoid printing the answer. The code instance format is as follows:
-
-```python
-# import packages
-import matplotlib.pyplot as plt
-def solution():
-    # labels and data
-    cars = ['AUDI', 'BMW', 'FORD', 'TESLA', 'JAGUAR', 'MERCEDES']
-    data = [23, 17, 35, 29, 12, 41]
-
-    # draw diagrams
-    figure = plt.figure(figsize=(8, 6))
-    plt.pie(data, labels=cars, autopct='%1.1f%%', startangle=140)
-    plt.axis('equal')
-    plt.title('Car Distribution')
-    return figure
-```
-'''  
+    description=plot_impl.default_desc
 )
 async def plot_tool(
         command: Annotated[str, Info('Markdown format Python code')]
@@ -316,14 +207,11 @@ async def plot_tool(
 # -----------------------------
 mathocr_impl = MathOCR()
 
-"""
- def apply(self, image: ImageIO) -> str:
-"""
 @mcp_server.tool(
     name="MathOCR",
-    description='This tool can recognize math expressions from an '
-                    'image and return the latex style expression.' 
+    description=mathocr_impl.default_desc
 )
+
 async def mathocr_tool(
         image_path: Annotated[str, Info('Path to the input image.')]
         ) -> list[TextContent]:
@@ -337,18 +225,9 @@ async def mathocr_tool(
 # -----------------------------
 count_impl = CountGivenObject()
 
-"""
-    def apply(
-        self,
-        image: ImageIO,
-        text: Annotated[str, Info('The object description in English.')],
-        bbox: Annotated[Optional[str],
-                        Info('The bbox coordinate in the format of `(x1, y1, x2, y2)`')] = None,
-    ) -> int:
-"""
 @mcp_server.tool(
     name="CountGivenObject",
-    description="The tool can count the number of a certain object in the image."
+    description=count_impl.default_desc
 )
 async def count_object_tool(
         image_path: Annotated[str, Info('The path to the input image.')],
@@ -364,33 +243,11 @@ async def count_object_tool(
 # -----------------------------
 solver_impl = Solver()
 
-"""
-    def apply(self, command: Annotated[str, Info('Markdown format Python code')]) -> str:
-"""
 @mcp_server.tool(
     name="Solver",
-    description='''\
-This tool can execute Python code to solve math equations. The code should include a function named 'solution'. You should use the `sympy` library in your code to solve the equations. The function should return its answer in str format. Avoid printing the answer. The code instance format is as follows:
-
-```python
-# import packages
-from sympy import symbols, Eq, solve
-def solution():
-    # Define symbols
-    x, y = symbols('x y')
-
-    # Define equations
-    equation1 = Eq(x**2 + y**2, 20)
-    equation2 = Eq(x**2 - 5*x*y + 6*y**2, 0)
-
-    # Solve the system of equations
-    solutions = solve((equation1, equation2), (x, y), dict=True)
-
-    # Return solutions as strings
-    return str(solutions)
-```
-'''
+    description=solver_impl.default_desc
 )
+
 async def solver_tool(
         command: Annotated[str, Info('Markdown format Python code.')]
         ) -> list[TextContent]:
@@ -403,18 +260,11 @@ async def solver_tool(
 # -----------------------------
 text_to_image_impl = TextToImage()
 
-"""
-    def apply(
-        self,
-        keywords: Annotated[str,
-                            Info('A series of English keywords separated by comma.')],
-    ) -> ImageIO:
-"""
 @mcp_server.tool(
     name="TextToImage",
-    description='This tool can generate an image according to the '
-                    'input text.'
+    description=text_to_image_impl.default_desc
 )
+
 async def text_to_image_tool(
         keywords: Annotated[str, Info('A series of English keywords separated by comma.')]
         ) -> list[TextContent]:
@@ -427,16 +277,11 @@ async def text_to_image_tool(
 # -----------------------------
 image_style_impl = ImageStylization()
 
-"""
-    def apply(self, image: ImageIO, instruction: str) -> ImageIO:
-"""
 @mcp_server.tool(
     name="ImageStylization",
-    description='This tool can modify the input image according to the '
-                    'input instruction. Here are some example instructions: '
-                    '"turn him into cyborg", "add fireworks to the sky", '
-                    '"make his jacket out of leather".'
+    description=image_style_impl.default_desc
 )
+
 async def image_style_tool(
         image_path: Annotated[str, Info('Path to the input image')],
         instructions: str
