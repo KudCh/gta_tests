@@ -45,8 +45,8 @@ async def ocr_tool_wrapper(
 # -----------------------------
 # Tool 2: RegionAttributeDescription
 # -----------------------------
-region_attribute_description_tool = RegionAttributeDescriptionReimplemented()
-region_attribute_description_tool.setup(device="cpu")
+region_attribute_description_tool = RegionAttributeDescriptionReimplemented(device="cpu")
+region_attribute_description_tool.setup()
 
 @mcp_server.tool(
     name="RegionAttributeDescription",
