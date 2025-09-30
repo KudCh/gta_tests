@@ -8,10 +8,8 @@ from dotenv import load_dotenv
 import sys, os
 sys.path.append(os.path.abspath("./agentlego"))
 
-from benchmark import RegionAttributeDescriptionReimplemented #, CountGivenObject, ImageDescription
-from agentlego.tools import OCR, ObjectDetection, ImageDescription, CountGivenObject, DrawBox, AddText, GoogleSearch, Calculator, Plot, MathOCR, Solver, TextToImage, ImageStylization
-from agentlego.utils import load_or_build_object, require
-from agentlego.tools import BaseTool
+from benchmark import RegionAttributeDescriptionReimplemented 
+from agentlego.apis import load_tool 
 from agentlego.types import ImageIO, Annotated, Info
 
 import nltk
@@ -30,56 +28,56 @@ def decode_image(img_b64: str) -> Image.Image:
 # -----------------------------
 # Tool 1: OCR
 # -----------------------------
-ocr_impl = OCR()
+ocr_tool = load_tool("OCR", device="cpu")
 
 @mcp_server.tool(
     name="OCR",
-    description=ocr_impl.default_desc
+    description=ocr_tool.default_desc
 )
-async def ocr_tool(
+async def ocr_tool_wrapper(
     image_path: Annotated[str, Info('The path to the input image.')]
     )  -> list[TextContent]:
 
     image = ImageIO(image_path)
-    result = ocr_impl(image)
+    result = ocr_tool(image)
     return [TextContent(type="text", text=str(result))]
 
 # -----------------------------
 # Tool 2: RegionAttributeDescription
 # -----------------------------
-region_attribute_description_impl = RegionAttributeDescriptionReimplemented()
+region_attribute_description_tool = RegionAttributeDescriptionReimplemented()
+region_attribute_description_tool.setup(device="cpu")
 
 @mcp_server.tool(
     name="RegionAttributeDescription",
-    description=region_attribute_description_impl.default_desc
+    description=region_attribute_description_tool.default_desc
 )
-async def region_attribute_description_tool(
+async def region_attribute_description_tool_wrapper(
         image_path: Annotated[str, Info('The path to the input image.')],
-        bbox: Annotated[str,
-                        Info('The bbox coordinate in the format of `(x1, y1, x2, y2)`')],
+        bbox: Annotated[str, Info('The bbox coordinate in the format of `(x1, y1, x2, y2)`')],
         attribute: Annotated[str, Info('The attribute to describe')],
     ) -> list[TextContent]:
 
     image = ImageIO(image_path)
-    result = region_attribute_description_impl(image, bbox, attribute)
+    result = region_attribute_description_tool(image, bbox, attribute)
     return [TextContent(type="text", text=str(result))]
 
 # -----------------------------
 # Tool 3: DetectGivenObject
 # -----------------------------
-detection_impl = ObjectDetection()
+detection_tool = load_tool("ObjectDetection", device="cpu")
 
 @mcp_server.tool(
     name="DetectGivenObject",
-    description=detection_impl.default_desc
+    description=detection_tool.default_desc
 )
-async def detect_given_object_tool(   
+async def detect_given_object_tool_wrapper(   
     image_path: Annotated[str, Info('The path to the input image.')],
     object: Annotated[Optional[str], Info('The object to detect. If not provided, detect all objects.')] = None,
     ) -> list[TextContent]:
 
     image = ImageIO(image_path)
-    result = detection_impl(image)
+    result = detection_tool(image)
 
     # If no object specified, return all results
     if object is None or object.strip() == "":
@@ -95,51 +93,51 @@ async def detect_given_object_tool(
 # -----------------------------
 # Tool 4: ImageDescription
 # -----------------------------
-image_description_impl = ImageDescription()
+image_description_tool = load_tool("ImageDescription", device="cpu")
 
 @mcp_server.tool(
     name="ImageDescription",
-    description=image_description_impl.default_desc
+    description=image_description_tool.default_desc
 )
 
-async def image_description_tool(
+async def image_description_tool_wrapper(
     image_path: 
         Annotated[str, Info('The path to the input image.')]
     ) -> list[TextContent]:
 
     image = ImageIO(image_path)
-    description = image_description_impl(image)
+    description = image_description_tool(image)
     return [TextContent(type="text", text=description)]
 
 # -----------------------------
 # Tool 5: DrawBox
 # -----------------------------
-drawbox_impl = DrawBox()
+drawbox_tool = load_tool("DrawBox", device="cpu")
 
 @mcp_server.tool(
     name="DrawBox",
-    description=drawbox_impl.default_desc
+    description=drawbox_tool.default_desc
 )
-async def drawbox_tool(
+async def drawbox_tool_wrapper(
         image_path: Annotated[str, Info('The path to the input image.')],
         bbox: Annotated[str, Info('The bbox coordinate in the format of `(x1, y1, x2, y2)`')],
         annotation: Annotated[Optional[str], Info('The extra annotation text of the bbox')] = None,
         ) -> list[TextContent]:
     
     image = ImageIO(image_path)
-    result = drawbox_impl(image, bbox, annotation).to_path()
+    result = drawbox_tool(image, bbox, annotation).to_path()
     return [TextContent(type="text", text=str(result))]
 
 # -----------------------------
 # Tool 6: AddText
 # -----------------------------
-addtext_impl = AddText()
+addtext_tool = load_tool("AddText", device="cpu")
 
 @mcp_server.tool(
     name="AddText",
-    description=addtext_impl.default_desc
+    description=addtext_tool.default_desc
 )
-async def addtext_tool(
+async def addtext_tool_wrapper(
         image_path: Annotated[str, Info('The path to the input image.')],
         text: Annotated[str, Info('The text to add on the image.')],
         position: Annotated[
@@ -150,145 +148,145 @@ async def addtext_tool(
         ) -> list[TextContent]:
     
     image = ImageIO(image_path)
-    result = addtext_impl(image, text, position).to_path()
+    result = addtext_tool(image, text, position).to_path()
     return [TextContent(type="text", text=str(result))]
 
 # -----------------------------
 # Tool 7: GoogleSearch
 # -----------------------------
-search_impl = GoogleSearch()
+search_tool = load_tool("GoogleSearch", device="cpu")
 
 @mcp_server.tool(
     name="GoogleSearch",
-    description=search_impl.default_desc
+    description=search_tool.default_desc
 )
-async def search_tool(
+async def search_tool_wrapper(
         query: Annotated[str, Info('The search query text.')]
         ) -> list[TextContent]:
     
-    result = search_impl(query)
+    result = search_tool(query)
     return [TextContent(type="text", text=result)]
 
 # -----------------------------
 # Tool 8: Calculator
 # -----------------------------
-calculator_impl = Calculator()
+calculator_tool = load_tool("Calculator", device="cpu")
 
 @mcp_server.tool(
     name="Calculator",
-    description=calculator_impl.default_desc
+    description=calculator_tool.default_desc
 )
 
-async def calculator_tool(
+async def calculator_tool_wrapper(
         expression: Annotated[str, Info('The mathematical expression to calculate.')]
         ) -> list[TextContent]:
     
-    result = calculator_impl(expression)
+    result = calculator_tool(expression)
     return [TextContent(type="text", text=result)]
 
 # -----------------------------
 # Tool 9: Plot
 # -----------------------------
-plot_impl = Plot()
+plot_tool = load_tool("Plot", device="cpu")
 
 @mcp_server.tool(
     name="Plot",
-    description=plot_impl.default_desc
+    description=plot_tool.default_desc
 )
-async def plot_tool(
+async def plot_tool_wrapper(
         command: Annotated[str, Info('Markdown format Python code')]
         ) -> list[TextContent]:
     
-    result = plot_impl(command).to_path()
+    result = plot_tool(command).to_path()
     return [TextContent(type="text", text=result)]
 
 # -----------------------------
 # Tool 10: MathOCR 
 # -----------------------------
-mathocr_impl = MathOCR()
+mathocr_tool = load_tool("MathOCR", device="cpu")
 
 @mcp_server.tool(
     name="MathOCR",
-    description=mathocr_impl.default_desc
+    description=mathocr_tool.default_desc
 )
 
-async def mathocr_tool(
+async def mathocr_tool_wrapper(
         image_path: Annotated[str, Info('Path to the input image.')]
         ) -> list[TextContent]:
     
     image = ImageIO(image_path)
-    result = mathocr_impl(image)
+    result = mathocr_tool(image)
     return [TextContent(type="text", text=result)]
 
 # -----------------------------
 # Tool 11: CountGivenObject
 # -----------------------------
-count_impl = CountGivenObject()
+count_tool = load_tool("CountGivenObject", device="cpu")
 
 @mcp_server.tool(
     name="CountGivenObject",
-    description=count_impl.default_desc
+    description=count_tool.default_desc
 )
-async def count_object_tool(
+async def count_object_tool_wrapper(
         image_path: Annotated[str, Info('The path to the input image.')],
         text: Annotated[str, Info('The object description in English.')]
         ) -> list[TextContent]:
     
     image = ImageIO(image_path)
-    count = count_impl(image, text)
+    count = count_tool(image, text)
     return [TextContent(type="text", text=str(count))]
 
 # -----------------------------
 # Tool 12: Solver
 # -----------------------------
-solver_impl = Solver()
+solver_tool = load_tool("Solver", device="cpu")
 
 @mcp_server.tool(
     name="Solver",
-    description=solver_impl.default_desc
+    description=solver_tool.default_desc
 )
 
-async def solver_tool(
+async def solver_tool_wrapper(
         command: Annotated[str, Info('Markdown format Python code.')]
         ) -> list[TextContent]:
     
-    result = solver_impl(command)
+    result = solver_tool(command)
     return [TextContent(type="text", text=result)]
 
 # -----------------------------
 # Tool 13: TextToImage
 # -----------------------------
-text_to_image_impl = TextToImage()
+text_to_image_tool = load_tool("TextToImage", device="cpu")
 
 @mcp_server.tool(
     name="TextToImage",
-    description=text_to_image_impl.default_desc
+    description=text_to_image_tool.default_desc
 )
 
-async def text_to_image_tool(
+async def text_to_image_tool_wrapper(
         keywords: Annotated[str, Info('A series of English keywords separated by comma.')]
         ) -> list[TextContent]:
     
-    result = text_to_image_impl(keywords).to_path()
+    result = text_to_image_tool(keywords).to_path()
     return [TextContent(type="text", text=result)]
 
 # -----------------------------
 # Tool 14: ImageStylization 
 # -----------------------------
-image_style_impl = ImageStylization()
+image_style_tool = load_tool("ImageStylization", device="cpu")
 
 @mcp_server.tool(
     name="ImageStylization",
-    description=image_style_impl.default_desc
+    description=image_style_tool.default_desc
 )
 
-async def image_style_tool(
+async def image_style_tool_wrapper(
         image_path: Annotated[str, Info('Path to the input image')],
-        instructions: str
+        instructions: str = Annotated[str, Info('The style instructions in English.')]
         ) -> list[TextContent]:
     
     image = ImageIO(image_path)
-    result = image_style_impl(image, instructions).to_path()
+    result = image_style_tool(image, instructions).to_path()
     return [TextContent(type="text", text=result)]
 
 # -----------------------------
