@@ -7,8 +7,7 @@ from benchmark import RegionAttributeDescriptionReimplemented
 from agentlego.types import ImageIO
 
 def test_region_attribute_description():
-    tool = RegionAttributeDescriptionReimplemented()
-
+    tool = RegionAttributeDescriptionReimplemented(device="cpu")
     tool.setup()
 
     image_path = "../gta_dataset/image/image_1.jpg"  
@@ -17,7 +16,7 @@ def test_region_attribute_description():
     bbox = "50, 50, 200, 200"  
     attribute = "color"
 
-    result = tool.apply(image=image, bbox=bbox, attribute=attribute)
+    result = tool(image=image, bbox=bbox, attribute=attribute)
 
     print("Result:", result)
 

@@ -206,6 +206,7 @@ class RegionAttributeDescriptionReimplemented(BaseTool):
     default_desc = "Describe the attribute of a region of the input image."
 
     def __init__(self, model_id="llava-hf/llava-1.5-7b-hf", device="cpu", toolmeta=None):
+        super().__init__(toolmeta=toolmeta)
         self.model_id = model_id
         self.device = "cuda" if torch.cuda.is_available() else device
         self.processor = None
@@ -249,7 +250,7 @@ class RegionAttributeDescriptionReimplemented(BaseTool):
             attn_implementation="eager",  # 👈 prevents SDPA error
         )
 
-    def apply(self, image, bbox: str, attribute: str, resize_max: int = 512):
+    def apply(self, image: ImageIO, bbox: str, attribute: str, resize_max: int = 512) -> str:
         from PIL import Image
 
         from agentlego.utils import parse_multi_float
