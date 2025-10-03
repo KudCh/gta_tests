@@ -1,21 +1,22 @@
 import asyncio
 import json
 from openai import OpenAI
-from mcp import ClientSession, StdioServerParameters
-from mcp.client.stdio import stdio_client
 from dotenv import load_dotenv
 import sys
 import base64
+import argparse
 
 load_dotenv()  
 
 # -----------------------------
 # Helpers
 
+# encode image for Responses API image input
 def encode_image(image_path):
     with open(image_path, "rb") as image_file:
         return base64.b64encode(image_file.read()).decode("utf-8")
     
+# create image ID for Responses API image input
 def create_file(file_path, client):
   with open(file_path, "rb") as file_content:
     result = client.files.create(
@@ -27,7 +28,7 @@ def create_file(file_path, client):
 # -----------------------------
 # Main function to run the chat
 
-async def run_chat(model_name: str, server_url: str, test_index: str = "0"):
+async def run_experiment(model_name: str, server_url: str, test_index: str = "0"):
 
     # Connect to the official OpenAI API
     client = OpenAI()  
@@ -35,11 +36,11 @@ async def run_chat(model_name: str, server_url: str, test_index: str = "0"):
     history = [
         {
             "role": "system",
-            "content": (
-                "You are an assistant that always reasons in the ReAct style.\n"
-                "You have a list of tools available to you to help in answering user queries.\n"
+            "content": """
+                You are an assistant that always reasons in the ReAct style.
+                You have a list of tools available to you to help in answering user queries.
 
-                """For every user tool that you use, please rpovide the following details:
+                For every user tool that you use, please provide the following details:
 
                 {{
                     "thought": "Your detailed reasoning about what to do next",
@@ -55,8 +56,7 @@ async def run_chat(model_name: str, server_url: str, test_index: str = "0"):
                 {{
                     "thought": "Your final reasoning process",
                     "answer": "Your comprehensive answer to the query"
-                }}"""
-            ),
+                }}""",
         }
     ]
 
@@ -111,11 +111,34 @@ async def run_chat(model_name: str, server_url: str, test_index: str = "0"):
                 print(f"Observation: {content}")
                 history.append({"role": "tool", "content": content})
 
+def main():
+    import json
+    RESULTS_FILE = "results.json"
+
+    parser = argparse.ArgumentParser(prog='OpenAI MCP client')
+
+    parser.add_argument("--start", type=int, required=True, help="Task index to start testing from")
+    parser.add_argument("--end", type=int, required=True, help="Task index to finish testing at (inclusive)")
+    parser.add_argument("--tools_server_url", type=str, required=True, help="Server link to connect to (e.g. http://localhost:8000)")
+    parser.add_argument("--model_name", type=str, required=True, help="Name of the LLM to be tested")
+    args = parser.parse_args()
+
+    # Print what will run
+    print(f"Running tasks {args.start}-{args.end} on model {args.model_name}")
+
+    results = []
+    # Loop over the task range
+    for task_id in range(args.start, args.end + 1):
+        print(f"\n>>> Running task {task_id}")
+        output = run_experiment(args.model_name, args.tools_server_url, str(task_id))
+        results.append({
+                        "task_id": task_id, 
+                        "final_output": output,
+                        "tool_calls": None # temp
+                    })
+
+    with open(RESULTS_FILE, "a") as f:
+        json.dump(results, f, indent=2)
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("Usage: python openai_mcp_agent.py [server_url] optional:[text index]")
-        print("Example: python openai_mcp_agent.py https://cfe484f994aa.ngrok-free.app 1")
-        sys.exit(1)
-    
-    asyncio.run(run_chat("gpt-4.1-mini", sys.argv[1], sys.argv[2] if len(sys.argv) > 2 else "0"))
+    main()
